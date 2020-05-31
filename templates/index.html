@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block head %}
+
+{% endblock %}
+
+{% block body %}
+<h1 style="text-align: center">Regresja liniowa</h1>
+<img src="static/obrazy/Figure.jpg" class="center" />
+<div class="content">
+    <h1>Oceny</h1>
+    <table>
+        <tr>
+            <th>Ocena</th>
+            <th>Dodano</th>
+
+        </tr>
+        {% for task in tasks %}
+        <tr>
+            <td>{{ task.content}}</td>
+            <td>{{task.date_created.date()}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <form action="/" method="POST">
+        <label for="content">Ocena (od 2 do 5):</label>
+        <input type="range" name="content" id="content" min="2" max="5">
+        <input type="submit" value="Dodaj ocene">
+    </form>
+</div>
+{% endblock %}
