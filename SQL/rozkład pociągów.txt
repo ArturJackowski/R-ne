@@ -1,0 +1,148 @@
+DROP DATABASE IF EXISTS rozkład_pociągów;
+
+
+CREATE DATABASE rozkład_pociągów;
+
+USE rozkład_pociągów;
+
+CREATE TABLE Pociągi
+     (id_p int AUTO_INCREMENT not null, PRIMARY KEY (id_p),
+     Przewoźnik CHAR(3) not null,
+     Klasy varchar(5) not null
+    );
+
+INSERT INTO Pociągi (Przewoźnik, Klasy) 
+VALUES ('IC','1,2'),('TLK','1,2'),('IR','1,2'),('IC','2'),('IR','2'),('TLK','2');
+
+CREATE TABLE Trasy 
+(id_t int AUTO_INCREMENT not null,
+    PRIMARY KEY(id_t),
+    Stacja_początkowa VARCHAR(30) not null,
+    Stacja_końcowa VARCHAR(30) not null,
+    Przystanki Varchar(200) not null
+);
+
+INSERT INTO Trasy (Stacja_początkowa,Stacja_końcowa, Przystanki)
+VALUES ('Łódź Fabryczna','Warszawa Wschodnia','Warszawa Centralna'),
+('Warszawa Wschodnia','Łódź Fabryczna','Warszawa Centralna'),
+('Łódź Fabryczna','Skierniewice','Łódź Widzew'),
+('Skierniewice','Łódź Fabryczna','Łódź Widzew'),
+('Łódź Fabryczna','Piotrków Trybunalski','Łódź Widzew'),
+('Piotrków Trybunalski','Łódź Fabryczna','Łódź Widzew')
+;
+
+CREATE TABLE Odjazdy
+( id_o int AUTO_INCREMENT not null,
+PRIMARY KEY(id_o),
+godzina TIME not null,
+id_p int not null,
+FOREIGN KEY (id_p) references Pociągi(id_p),
+id_t int not null,
+FOREIGN KEY (id_t) references Trasy(id_t)
+);
+
+INSERT INTO Odjazdy (godzina, id_p,id_t) VALUES ('08:02',1,1),('12:05',1,1),('15:55',1,1),('08:59',2,1),('13:00',2,1),
+('17:10',2,1),('15:04',4,1),('20:51',4,1), ('08:30',3,3),('10:30',3,3),('15:36',5,3),('18:21',5,3),('13:00',6,3),
+('20:00',6,3),('07:10',6,5),('12:00',6,5),('15:07',5,5),('19:53',5,5),('11:49',3,5),('17:19',3,5);
+
+CREATE TABLE Przyjazdy
+( id_pr int AUTO_INCREMENT not null,
+PRIMARY KEY(id_pr),
+godzina TIME not null,
+id_p int not null,
+FOREIGN KEY (id_p) references Pociągi(id_p),
+id_t int not null,
+FOREIGN KEY (id_t) references Trasy(id_t)
+);
+
+INSERT INTO Przyjazdy (godzina,id_p,id_t) VALUES ('11:30',1,1),('15:30',1,1),('19:30',1,1),('12:30',2,1),('16:30',2,1),
+('18:35',2,1),('18:28',4,1),('22:21',4,1), ('10:55',3,3),('12:02',3,3),('17:03',5,3),('19:59',5,3),('16:12',6,3),
+('23:18',6,3),('10:45',6,5),('15:42',6,5),('18:11',5,5),('22:39',5,5),('15:06',3,5),('20:50',3,5);
+
+CREATE INDEX Indeks_godzina ON Przyjazdy(godzina);
+CREATE INDEX Indeks_godzina ON Odjazdy(godzina);
+CREATE INDEX Indeks_Stac_ko ON Trasy(Stacja_końcowa);
+
+SELECT stacja_początkowa, stacja_końcowa, przewoźnik, godzina FROM trasy,pociągi,przyjazdy
+WHERE trasy.id_t=przyjazdy.id_t AND pociągi.id_p=przyjazdy.id_p;
+
+
+SELECT stacja_początkowa, stacja_końcowa, przewoźnik, godzina FROM trasy NATURAL JOIN pociągi,odjazdy;
+
+SELECT stacja_początkowa, stacja_końcowa, przewoźnik, godzina FROM trasy INNER JOIN pociągi,przyjazdy;
+
+SELECT stacja_początkowa, stacja_końcowa, przewoźnik, godzina FROM trasy
+LEFT OUTER JOIN odjazdy ON trasy.id_t=odjazdy.id_t LEFT OUTER JOIN pociągi ON pociągi.id_p=odjazdy.id_p;
+
+SELECT stacja_początkowa, stacja_końcowa, przewoźnik, godzina FROM trasy
+RIGHT OUTER JOIN przyjazdy ON trasy.id_t=przyjazdy.id_t RIGHT OUTER JOIN pociągi ON pociągi.id_p=przyjazdy.id_p;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ILE_ODJAZDÓW`(OUT `Suma` INT(255) UNSIGNED)
+    READS SQL DATA
+BEGIN
+SELECT COUNT(*) FROM Odjazdy into Suma;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ILE_PRZYJAZDÓW`(OUT `Suma` INT(255) UNSIGNED)
+    READS SQL DATA
+BEGIN
+SELECT COUNT(*) FROM przyjazdy into Suma;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ILE_TRAS`(OUT `Suma` INT(255) UNSIGNED)
+    READS SQL DATA
+BEGIN
+SELECT COUNT(*) FROM trasy into Suma;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ILE_TYPÓW_POCIĄGÓW`(OUT `Suma` INT(255) UNSIGNED)
+    READS SQL DATA
+BEGIN
+SELECT COUNT(*) FROM Pociągi into Suma;
+END$$
+DELIMITER ;
+
+CREATE TABLE logi ( 
+id_log INT AUTO_INCREMENT not null,
+PRIMARY KEY(id_log),
+operacja VARCHAR(50) not null, 
+czas DATETIME not null);
+
+Delimiter ///
+CREATE TRIGGER `after_insert_trasy` AFTER INSERT ON `trasy`
+FOR EACH ROW BEGIN
+INSERT INTO logi (id_log,operacja,czas) VALUE (null,'Dopisano rekord do tabeli trasy.', NOW());
+END
+///
+
+Delimiter ///
+CREATE TRIGGER `before_insert_trasy` BEFORE INSERT ON `trasy`
+ FOR EACH ROW BEGIN
+INSERT INTO logi (id_log,operacja,czas) VALUE (null,'Próba dopisania rekordu do tabeli trasy.', NOW());
+END
+///
+
+Delimiter ///
+CREATE TRIGGER `after_update_trasy` AFTER UPDATE ON `trasy`
+ FOR EACH ROW BEGIN
+INSERT INTO logi (id_log,operacja,czas) VALUE (null,'Zmodyfikowano rekord w tabeli trasy.', NOW());
+END
+///
+
+
+INSERT INTO Trasy (Stacja_początkowa,Stacja_końcowa, Przystanki)
+VALUE ('Kraków Główny','Łódź Fabryczna','Warszawa Centralna');
+
+
+
+
+
+
+
